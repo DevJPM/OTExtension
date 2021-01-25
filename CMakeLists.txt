@@ -5,6 +5,9 @@ if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8.0)
     message(FATAL_ERROR "ENCRYPTO_utils require at least g++-8")
 endif()
 
+# string(APPEND CMAKE_CXX_FLAGS " -g")
+# string(APPEND CMAKE_LINKER_FLAGS " -g")
+
 option(OTEXTENSION_BUILD_EXE "Build executables" OFF)
 
 find_package(ENCRYPTO_utils QUIET)
@@ -40,11 +43,13 @@ add_library(otextension
     ot/ot-ext-snd.cpp
     ot/pvwddh.cpp
     ot/simpleot.cpp
-)
+    ot/fixed-key-intrin.cpp)
 add_library(OTExtension::otextension ALIAS otextension)
 
 target_compile_features(otextension PUBLIC cxx_std_17)
 target_compile_options(otextension PRIVATE "-Wall" "-Wextra")
+#target_compile_options(otextension PUBLIC "-fsanitize=undefined" "-fsanitize=unsigned-integer-overflow" "-fsanitize=implicit-conversion" "-fsanitize=local-bounds")
+#target_link_options(otextension PUBLIC "-fsanitize=undefined" "-fsanitize=unsigned-integer-overflow" "-fsanitize=implicit-conversion" "-fsanitize=local-bounds")
 #target_compile_options(otextension PUBLIC "-fno-omit-frame-pointer" "-fsanitize=address")
 #target_link_options(otextension PUBLIC "-fno-omit-frame-pointer" "-fsanitize=address")
 

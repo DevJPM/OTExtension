@@ -23,6 +23,7 @@
 #include <vector>
 #include "ot-ext-snd.h"
 #include "baseOT.h"
+#include "fixed-key-intrin.h"
 #include <ENCRYPTO_utils/channel.h>
 #include <ENCRYPTO_utils/cbitvector.h>
 #ifdef OTTiming
@@ -84,7 +85,6 @@ BOOL OTExtSnd::start_send(uint32_t numThreads) {
 	return true;
 }
 
-
 void OTExtSnd::BuildQMatrix(CBitVector* T, uint64_t OT_ptr, uint64_t numblocks, OT_AES_KEY_CTX* seedkeyptr) {
 	BYTE* Tptr = T->GetArr();
 	uint8_t* ctr_buf = (uint8_t*) calloc (AES_BYTES, sizeof(uint8_t));
@@ -99,7 +99,8 @@ void OTExtSnd::BuildQMatrix(CBitVector* T, uint64_t OT_ptr, uint64_t numblocks, 
 
 
 #ifdef USE_PIPELINED_AES_NI
-	intrin_sequential_gen_rnd8(ctr_buf, global_OT_ptr, Tptr, iters, m_nBaseOTs, seedkeyptr);
+	//intrin_sequential_gen_rnd8(ctr_buf, global_OT_ptr, Tptr, iters, m_nBaseOTs, seedkeyptr);
+	ParallelEncryption(global_OT_ptr, Tptr, iters, m_nBaseOTs, seedkeyptr);
 #else
 	for (uint64_t k = 0, b; k < m_nBaseOTs; k++) {
 		*counter = global_OT_ptr;
@@ -212,53 +213,61 @@ void OTExtSnd::HashValues(CBitVector* Q, CBitVector* seedbuf, CBitVector* snd_bu
 	for (u = 0; u < m_nSndVals; u++)
 		sbp[u] = seedbuf[u].GetArr();
 
-	for (uint64_t i = 0; i < OT_len; global_OT_ptr++, i++, Qptr += 2) {
-		for (u = 0; u < m_nSndVals; u++) {
+	const bool use_fast_fixed_key = use_fixed_key_aes_hashing && m_nSymSecParam == 128 && wd_size_bytes == 16 && rowbytelen == 16;
 
+	if (m_eSndOTFlav != Snd_GC_OT && use_fast_fixed_key) {
+		FixedKeyHashingIntrinSnd(sbp,Q->GetArr(),U->GetArr(),0, OT_len, m_nSndVals);
+	}
+	else {
+		for (uint64_t i = 0; i < OT_len; global_OT_ptr++, i++, Qptr += 2) {
+			for (u = 0; u < m_nSndVals; u++) {
 #ifdef HIGH_SPEED_ROT_LT
-			if(u == 1) {
-				Qptr[0]^=Uptr[0];
-				Qptr[1]^=Uptr[1];
-			}
+				if (u == 1) {
+					Qptr[0] ^= Uptr[0];
+					Qptr[1] ^= Uptr[1];
+				}
 #else
-			if (u == 1)
-				Q->XORBytes((uint8_t*) Uptr, i * wd_size_bytes, rowbytelen);
+				if (u == 1)
+					Q->XORBytes((uint8_t*)Uptr, i * wd_size_bytes, rowbytelen);
 #endif
 
 #ifdef DEBUG_OT_HASH_IN
-			std::cout << "Hash-In for i = " << global_OT_ptr << ", u = " << u << ": " << (std::hex);
-			for(uint32_t p = 0; p < rowbytelen; p++)
-				std::cout << std::setw(2) << std::setfill('0') << (uint32_t) (Q.GetArr() + i * wd_size_bytes)[p];
-			std::cout << (std::dec) << std::endl;
+				std::cout << "Hash-In for i = " << global_OT_ptr << ", u = " << u << ": " << (std::hex);
+				for (uint32_t p = 0; p < rowbytelen; p++)
+					std::cout << std::setw(2) << std::setfill('0') << (uint32_t)(Q.GetArr() + i * wd_size_bytes)[p];
+				std::cout << (std::dec) << std::endl;
 #endif
 
-			if(m_eSndOTFlav != Snd_GC_OT) {
-				if (use_fixed_key_aes_hashing) {
-					FixedKeyHashing(m_kCRFKey, sbp[u], (BYTE*) Qptr, hash_buf, i, ceil_divide(m_nSymSecParam, 8), m_cCrypt);
-				} else {
-					memcpy(inbuf, &global_OT_ptr, sizeof(uint64_t));
-					memcpy(inbuf+sizeof(uint64_t), Q->GetArr() + i * wd_size_bytes, rowbytelen);
-					m_cCrypt->hash_buf(resbuf, aes_key_bytes, inbuf, hashinbytelen, hash_buf);
-					memcpy(sbp[u], resbuf, aes_key_bytes);
+				if (m_eSndOTFlav != Snd_GC_OT) {
+					if (use_fixed_key_aes_hashing && !use_fast_fixed_key){
+						FixedKeyHashing(m_kCRFKey, sbp[u], (BYTE*)Qptr, hash_buf, i, ceil_divide(m_nSymSecParam, 8), m_cCrypt);
+					}
+					else {
+						memcpy(inbuf, &global_OT_ptr, sizeof(uint64_t));
+						memcpy(inbuf + sizeof(uint64_t), Q->GetArr() + i * wd_size_bytes, rowbytelen);
+						m_cCrypt->hash_buf(resbuf, aes_key_bytes, inbuf, hashinbytelen, hash_buf);
+						memcpy(sbp[u], resbuf, aes_key_bytes);
+					}
 				}
-			} else {
+				else {
 
-				BitMatrixMultiplication(tmpbufb, bits_in_bytes(m_nBitLength), Q->GetArr() + i * wd_size_bytes, m_nBaseOTs, mat_mul, tmpbuf);
-				//m_vValues[u].SetBits(tmpbufb, (OT_ptr + i)* m_nBitLength, m_nBitLength);
-				snd_buf[u].SetBits(tmpbufb, i * m_nBitLength, m_nBitLength);
+					BitMatrixMultiplication(tmpbufb, bits_in_bytes(m_nBitLength), Q->GetArr() + i * wd_size_bytes, m_nBaseOTs, mat_mul, tmpbuf);
+					//m_vValues[u].SetBits(tmpbufb, (OT_ptr + i)* m_nBitLength, m_nBitLength);
+					snd_buf[u].SetBits(tmpbufb, i * m_nBitLength, m_nBitLength);
 					//m_vTempOTMasks.SetBytes(tmpbufb, (uint64_t) (OT_ptr + i) * aes_key_bytes, (uint64_t) aes_key_bytes);
 				//m_vValues[u].SetBytes(Q.GetArr() + i * wd_size_bytes, (OT_ptr + i)* wd_size_bytes, rowbytelen);
 
-			}
+				}
 
 #ifdef DEBUG_OT_HASH_OUT
-			std::cout << "Hash-Out for i = " << global_OT_ptr << ", u = " << u << ": " << (std::hex);
-			for(uint32_t p = 0; p < aes_key_bytes; p++)
-				std::cout << std::setw(2) << std::setfill('0') << (uint32_t) sbp[u][p];
-			std::cout << (std::dec) << std::endl;
+				std::cout << "Hash-Out for i = " << global_OT_ptr << ", u = " << u << ": " << (std::hex);
+				for (uint32_t p = 0; p < aes_key_bytes; p++)
+					std::cout << std::setw(2) << std::setfill('0') << (uint32_t)sbp[u][p];
+				std::cout << (std::dec) << std::endl;
 #endif
-			sbp[u] += aes_key_bytes;
+				sbp[u] += aes_key_bytes;
 
+			}
 		}
 	}
 	//m_vValues[0].PrintHex();

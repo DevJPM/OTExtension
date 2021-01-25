@@ -169,7 +169,11 @@ BOOL ALSZOTExtSnd::sender_routine(uint32_t id, uint64_t myNumOTs) {
 		mask_queue.push(tmpmaskbuf);
 
 		if(check_chan->data_available()) {
-			assert(CheckConsistency(&check_queue, check_chan));
+			// this used to be an assert but breaks the code heavily whenever asserts are not enabled!
+			if (!CheckConsistency(&check_queue, check_chan)) {
+				std::cerr << "OT extension consistency check failed. Aborting program\n";
+				exit(0);
+			}
 			//CheckConsistency(&check_queue, check_chan)
 			tmpmaskbuf = mask_queue.front();
 			mask_queue.pop();

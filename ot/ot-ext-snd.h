@@ -37,9 +37,11 @@ public:
 		// TODO: This could be done in OTExt destructor;
 		// see also comment in OTExtSnd destructor
 		for(uint32_t i = 0; i < m_tBaseOTKeys.size(); i++) {
+#ifndef USE_PIPELINED_AES_NI
 			for(uint32_t j = 0; j < m_nBaseOTs; j++) {
 				m_cCrypt->clean_aes_key(&m_tBaseOTKeys[i][j]);
 			}
+#endif 
 			free(m_tBaseOTKeys[i]);
 		}
 		// do not free(m_vValues), since it is passed from the outside to send()

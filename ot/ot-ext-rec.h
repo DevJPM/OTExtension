@@ -36,9 +36,11 @@ public:
 		// following loop to its destructor?
 		uint32_t nsndvals = 2;
 		for(uint32_t i = 0; i < m_tBaseOTKeys.size(); i++) {
+#ifndef USE_PIPELINED_AES_NI
 			for(uint32_t j = 0; j < m_nBaseOTs * nsndvals; j++) {
 				m_cCrypt->clean_aes_key(&m_tBaseOTKeys[i][j]);
 			}
+#endif
 			free(m_tBaseOTKeys[i]);
 		}
 	};

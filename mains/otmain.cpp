@@ -4,6 +4,8 @@
 
 //pthread_mutex_t CLock::share_mtx = PTHREAD_MUTEX_INITIALIZER;
 
+constexpr bool CHECK_OTS = false;
+
 BOOL Init(crypto* crypt)
 {
 	return TRUE;
@@ -48,11 +50,11 @@ void InitOTSender(const std::string& address, const int port, crypto* crypt, CLo
 	sndthread->Start();
 
 	switch(m_eProt) {
-		case ALSZ: sender = new ALSZOTExtSnd(crypt, rcvthread, sndthread, m_nBaseOTs, m_nChecks); break;
-		case IKNP: sender = new IKNPOTExtSnd(crypt, rcvthread, sndthread); break;
-		case NNOB: sender = new NNOBOTExtSnd(crypt, rcvthread, sndthread); break;
-		case KK: sender = new KKOTExtSnd(crypt, rcvthread, sndthread); break;
-		default: sender = new ALSZOTExtSnd(crypt, rcvthread, sndthread, m_nBaseOTs, m_nChecks); break;
+		case ALSZ: sender = new ALSZOTExtSnd(crypt, rcvthread, sndthread, m_nBaseOTs, m_nChecks, 4096, CHECK_OTS, true); break;
+		case IKNP: sender = new IKNPOTExtSnd(crypt, rcvthread, sndthread, 4096, CHECK_OTS, true); break;
+		case NNOB: sender = new NNOBOTExtSnd(crypt, rcvthread, sndthread, 4096, CHECK_OTS, true); break;
+		case KK: sender = new KKOTExtSnd(crypt, rcvthread, sndthread, 4096, CHECK_OTS, true); break;
+		default: sender = new ALSZOTExtSnd(crypt, rcvthread, sndthread, m_nBaseOTs, m_nChecks, 4096, CHECK_OTS, true); break;
 	}
 
 	if(m_bUseMinEntCorAssumption)
@@ -82,11 +84,11 @@ void InitOTReceiver(const std::string& address, const int port, crypto* crypt, C
 	sndthread->Start();
 
 	switch(m_eProt) {
-		case ALSZ: receiver = new ALSZOTExtRec(crypt, rcvthread, sndthread, m_nBaseOTs, m_nChecks); break;
-		case IKNP: receiver = new IKNPOTExtRec(crypt, rcvthread, sndthread); break;
-		case NNOB: receiver = new NNOBOTExtRec(crypt, rcvthread, sndthread); break;
-		case KK: receiver = new KKOTExtRec(crypt, rcvthread, sndthread); break;
-		default: receiver = new ALSZOTExtRec(crypt, rcvthread, sndthread, m_nBaseOTs, m_nChecks); break;
+		case ALSZ: receiver = new ALSZOTExtRec(crypt, rcvthread, sndthread, m_nBaseOTs, m_nChecks,4096, CHECK_OTS,true); break;
+		case IKNP: receiver = new IKNPOTExtRec(crypt, rcvthread, sndthread, 4096, CHECK_OTS, true); break;
+		case NNOB: receiver = new NNOBOTExtRec(crypt, rcvthread, sndthread, 4096, CHECK_OTS, true); break;
+		case KK: receiver = new KKOTExtRec(crypt, rcvthread, sndthread, 4096, CHECK_OTS, true); break;
+		default: receiver = new ALSZOTExtRec(crypt, rcvthread, sndthread, m_nBaseOTs, m_nChecks, 4096, CHECK_OTS, true); break;
 	}
 
 

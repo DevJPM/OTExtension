@@ -119,9 +119,12 @@ public:
 
 		if (bitlength <= AES_KEY_BITS) {
 			uint64_t pos = offset * bitlength;
-			for (uint32_t i = 0; i < processedOTs; i++, sbp += AES_KEY_BYTES, pos+=bitlength) {
-				out->SetBits(sbp, pos, (uint64_t) bitlength);
-			}
+			if(bitlength==AES_KEY_BITS)
+				out->SetBits(sbp, pos, (uint64_t)bitlength* processedOTs);
+			else
+				for (uint32_t i = 0; i < processedOTs; i++, sbp += AES_KEY_BYTES, pos+=bitlength) {
+					out->SetBits(sbp, pos, (uint64_t) bitlength);
+				}
 		} else {
 			uint8_t* m_bBuf = (uint8_t*) malloc(AES_BYTES);
 			uint8_t* ctr_buf = (uint8_t*) calloc(AES_BYTES, sizeof(uint8_t));

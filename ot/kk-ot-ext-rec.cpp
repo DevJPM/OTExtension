@@ -239,6 +239,7 @@ void KKOTExtRec::GenerateChoiceCodes(CBitVector* choicecodes, CBitVector* vSnd, 
 	//vSnd.PrintHex(0, ncolumnsbyte*len);
 }
 
+#undef USE_PIPELINED_AES_NI
 void KKOTExtRec::KKHashValues(CBitVector* T, CBitVector* seedbuf, CBitVector* maskbuf, uint64_t OT_ptr, uint64_t OT_len, uint64_t** mat_mul) {
 	//uint32_t wd_size_bytes = m_nBlockSizeBytes;//(1 << ((ceil_log2(m_nBaseOTs)) - 3));
 	uint32_t rowbytelen = bits_in_bytes(m_nBaseOTs);
@@ -260,7 +261,7 @@ void KKOTExtRec::KKHashValues(CBitVector* T, CBitVector* seedbuf, CBitVector* ma
 	uint32_t diff_choicecodes = int_choicecodebits / ext_choicecodebits;
 
 #ifdef USE_PIPELINED_AES_NI
-	AES_KEY tk_aeskey;
+	AES_KEY_t tk_aeskey;
 	block inblock, outblock;
 	tk_aeskey.rounds = 14;
 

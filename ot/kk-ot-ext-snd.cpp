@@ -183,7 +183,7 @@ void KKOTExtSnd::ComputeBaseOTs(field_type ftype) {
 	delete m_cBaseOT;
 }
 
-
+#undef USE_PIPELINED_AES_NI
 
 void KKOTExtSnd::KKHashValues(CBitVector& Q, CBitVector* seedbuf, CBitVector* snd_buf, uint64_t OT_ptr, uint64_t OT_len, uint64_t** mat_mul) {
 	uint32_t rowbytelen = bits_in_bytes(m_nBaseOTs);

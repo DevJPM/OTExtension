@@ -22,8 +22,8 @@
 #include <ENCRYPTO_utils/constants.h>
 
 #ifndef ABY_OT
-#define BATCH
-//#define USE_PIPELINED_AES_NI
+//#define BATCH
+#define USE_PIPELINED_AES_NI
 //#define SIMPLE_TRANSPOSE //activate the simple transpose, only required for benchmarking, not recommended
 
 #endif
